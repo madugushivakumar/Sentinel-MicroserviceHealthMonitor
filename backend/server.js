@@ -4,8 +4,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { existsSync } from 'fs';
+import { dirname } from 'path';
 import connectDB from './config/database.js';
 import { initializeHealthCheckCron } from './cron/healthCheckCron.js';
 
@@ -26,23 +25,13 @@ import debugRoutes from './routes/debug.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Check if .env file exists
-const envPath = join(__dirname, '.env');
-if (!existsSync(envPath)) {
-  console.error('❌ .env file not found!');
-  console.error(`Expected location: ${envPath}`);
-  console.error('\n📝 Please create a .env file with the following content:');
-  console.error('See backend/ENV_SETUP.md for details\n');
-  process.exit(1);
-}
-
+// Load environment variables
 dotenv.config();
 
 // Verify MONGODB_URI is set
 if (!process.env.MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not set in .env file');
-  console.error('Please add MONGODB_URI to your .env file');
-  console.error('See backend/ENV_SETUP.md for the connection string\n');
+  console.error('❌ MONGODB_URI is not set');
+  console.error('Please configure it in environment variables');
   process.exit(1);
 }
 
@@ -57,10 +46,10 @@ const io = new Server(httpServer, {
     credentials: true
   },
   transports: ['websocket', 'polling'],
-  allowEIO3: true // Allow Engine.IO v3 clients for compatibility
+  allowEIO3: true
 });
 
-// Middleware (must be defined before routes)
+// Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true
@@ -68,19 +57,19 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Trust proxy for accurate IP addresses (important for rate limiting)
+// Trust proxy (important for rate limiting & Render)
 app.set('trust proxy', 1);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
-  
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
 });
 
-// Make io instance available to routes
+// Make io available to routes
 app.set('io', io);
 
 // API Routes
@@ -96,37 +85,37 @@ app.use('/api/npm-generator', npmGeneratorRoutes);
 app.use('/metrics', metricsRoutes);
 app.use('/api/debug', debugRoutes);
 
-// Health check endpoint for the monitor itself
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'UP', timestamp: new Date().toISOString() });
 });
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Sentinel Microservice Health Monitor API',
     version: '1.0.0'
   });
 });
 
-// Database connection - wait for it before starting server
+// Database connection flag
 let dbConnected = false;
 
 const startServer = async () => {
   try {
-    // Connect to database first
+    // Connect DB
     await connectDB();
     dbConnected = true;
-    
-    // Only start cron jobs after DB is connected
+
+    // Start cron jobs after DB connection
     initializeHealthCheckCron(io);
-    
+
     const PORT = process.env.PORT || 5000;
-    
+
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🏥 Health check endpoint: http://localhost:${PORT}/health`);
-      console.log(`📈 Metrics endpoint: http://localhost:${PORT}/metrics`);
+      console.log(`🏥 Health endpoint: /health`);
+      console.log(`📈 Metrics endpoint: /metrics`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
@@ -134,9 +123,8 @@ const startServer = async () => {
   }
 };
 
-// Start the server
+// Start server
 startServer();
 
-// Export dbConnected for use in routes if needed
+// Export for routes
 export { dbConnected };
-
