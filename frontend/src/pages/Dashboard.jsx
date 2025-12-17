@@ -17,60 +17,78 @@ export const Dashboard = () => {
   useEffect(() => {
     if (selectedProject) {
       loadData();
+    } else {
+      setServices([]);
+      setIncidents([]);
+      setReliabilityScores([]);
+      setLoading(false);
     }
 
-    // Use shared socket instance
+    // ✅ shared socket (no reconnect spam)
     const socket = getSocket();
 
-    socket.on('healthUpdate', (data) => {
-      setServices(prev => prev.map(s => 
-        s.id === data.serviceId 
-          ? { ...s, status: data.status, latency: data.latency, cpu: data.cpu, memory: data.memory }
-          : s
-      ));
-    });
+    if (socket) {
+      socket.on('healthUpdate', (data) => {
+        setServices(prev =>
+          prev.map(s =>
+            s.id === data.serviceId
+              ? {
+                  ...s,
+                  status: data.status,
+                  latency: data.latency,
+                  cpu: data.cpu,
+                  memory: data.memory
+                }
+              : s
+          )
+        );
+      });
+    }
 
     return () => {
-      socket.off('healthUpdate');
+      if (socket) {
+        socket.off('healthUpdate');
+      }
     };
   }, [selectedProject]);
 
   const loadData = async () => {
-    if (!selectedProject) {
-      setServices([]);
-      setIncidents([]);
-      setLoading(false);
-      return;
-    }
+    if (!selectedProject) return;
 
     try {
+      setLoading(true);
+
       const [servicesRes, incidentsRes, reliabilityRes] = await Promise.all([
         getServices(selectedProject.id),
         getIncidents({ resolved: 'false', limit: 5 }),
         getReliabilityScores()
       ]);
+
       setServices(servicesRes.data);
       setIncidents(incidentsRes.data);
       setReliabilityScores(reliabilityRes.data || []);
     } catch (error) {
-      console.error('Failed to load data:', error);
-      if (error.response?.status === 429) {
-        setTimeout(() => loadData(), 2000);
-        return;
-      }
+      console.error('Failed to load dashboard data:', error);
+      // ❌ NO retry loop here (important)
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-white font-mono">Loading...</div>;
+    return (
+      <div className="text-center py-12 text-white font-mono">
+        Loading...
+      </div>
+    );
   }
 
   if (!selectedProject) {
     return (
       <div className="text-center py-12">
-        <p className="text-zinc-400 mb-4 font-mono">Please select a project to view the dashboard.</p>
+        <p className="text-zinc-400 mb-4 font-mono">
+          Please select a project to view the dashboard.
+        </p>
         <button
           onClick={() => navigate('/projects')}
           className="px-4 py-2 bg-white text-black rounded-lg hover:bg-zinc-200 font-mono"
@@ -90,74 +108,65 @@ export const Dashboard = () => {
     <div className="space-y-8">
       {/* System Overview */}
       <div>
-        <h1 className="text-2xl font-bold text-white font-mono mb-2">System Overview</h1>
-        <p className="text-zinc-400 font-mono">Real-time metrics and health status.</p>
+        <h1 className="text-2xl font-bold text-white font-mono mb-2">
+          System Overview
+        </h1>
+        <p className="text-zinc-400 font-mono">
+          Real-time metrics and health status.
+        </p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-black border border-zinc-800 p-6 rounded-lg">
-          <p className="text-sm font-medium text-white uppercase font-mono mb-2">TOTAL SERVICES</p>
-          <p className="text-4xl font-bold text-white font-mono">{totalServices}</p>
+          <p className="text-sm text-white uppercase font-mono mb-2">
+            TOTAL SERVICES
+          </p>
+          <p className="text-4xl font-bold text-white font-mono">
+            {totalServices}
+          </p>
         </div>
         <div className="bg-black border border-zinc-800 p-6 rounded-lg">
-          <p className="text-sm font-medium text-white uppercase font-mono mb-2">SERVICES DOWN</p>
-          <p className="text-4xl font-bold text-pink-500 font-mono">{servicesDown}</p>
+          <p className="text-sm text-white uppercase font-mono mb-2">
+            SERVICES DOWN
+          </p>
+          <p className="text-4xl font-bold text-pink-500 font-mono">
+            {servicesDown}
+          </p>
         </div>
         <div className="bg-black border border-zinc-800 p-6 rounded-lg">
-          <p className="text-sm font-medium text-white uppercase font-mono mb-2">DEGRADED</p>
-          <p className="text-4xl font-bold text-yellow-500 font-mono">{servicesDegraded}</p>
+          <p className="text-sm text-white uppercase font-mono mb-2">
+            DEGRADED
+          </p>
+          <p className="text-4xl font-bold text-yellow-500 font-mono">
+            {servicesDegraded}
+          </p>
         </div>
         <div className="bg-black border border-zinc-800 p-6 rounded-lg">
-          <p className="text-sm font-medium text-white uppercase font-mono mb-2">ACTIVE INCIDENTS</p>
-          <p className="text-4xl font-bold text-indigo-500 font-mono">{activeIncidents}</p>
+          <p className="text-sm text-white uppercase font-mono mb-2">
+            ACTIVE INCIDENTS
+          </p>
+          <p className="text-4xl font-bold text-indigo-500 font-mono">
+            {activeIncidents}
+          </p>
         </div>
       </div>
 
-      {/* Latency Percentiles Overview */}
-      {reliabilityScores.length > 0 && (
-        <div className="bg-black border border-zinc-800 rounded-lg p-6">
-          <h2 className="text-lg font-bold text-white mb-4 font-mono">Latency Percentiles (All Services)</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-xs text-zinc-400 uppercase font-mono mb-1">P50 (Median)</p>
-              <p className="text-2xl font-mono font-bold text-white">
-                {reliabilityScores.length > 0 
-                  ? Math.round(reliabilityScores.reduce((sum, s) => sum + (s.p50Latency || 0), 0) / reliabilityScores.length)
-                  : 0}ms
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400 uppercase font-mono mb-1">P95</p>
-              <p className="text-2xl font-mono font-bold text-white">
-                {reliabilityScores.length > 0 
-                  ? Math.round(reliabilityScores.reduce((sum, s) => sum + (s.p95Latency || 0), 0) / reliabilityScores.length)
-                  : 0}ms
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400 uppercase font-mono mb-1">P99</p>
-              <p className="text-2xl font-mono font-bold text-white">
-                {reliabilityScores.length > 0 
-                  ? Math.round(reliabilityScores.reduce((sum, s) => sum + (s.p99Latency || 0), 0) / reliabilityScores.length)
-                  : 0}ms
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Service Status */}
       <div>
-        <h2 className="text-lg font-bold text-white mb-4 font-mono">Service Status</h2>
+        <h2 className="text-lg font-bold text-white mb-4 font-mono">
+          Service Status
+        </h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {services.map(service => {
-            const reliability = reliabilityScores.find(s => s.serviceId === service.id);
+            const reliability = reliabilityScores.find(
+              s => s.serviceId === service.id
+            );
             return (
-              <ServiceCard 
-                key={service.id} 
-                service={{ ...service, reliability }} 
-                onClick={(id) => navigate(`/service/${id}`)} 
+              <ServiceCard
+                key={service.id}
+                service={{ ...service, reliability }}
+                onClick={(id) => navigate(`/service/${id}`)}
               />
             );
           })}
@@ -167,10 +176,12 @@ export const Dashboard = () => {
       {/* Recent Incidents */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-white font-mono">Recent Incidents</h2>
-          <button 
-            onClick={() => navigate('/incidents')} 
-            className="text-sm text-indigo-400 hover:text-indigo-300 font-medium font-mono"
+          <h2 className="text-lg font-bold text-white font-mono">
+            Recent Incidents
+          </h2>
+          <button
+            onClick={() => navigate('/incidents')}
+            className="text-sm text-indigo-400 hover:text-indigo-300 font-mono"
           >
             View all
           </button>

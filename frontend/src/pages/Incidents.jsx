@@ -10,30 +10,34 @@ export const Incidents = () => {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
+  // 🔹 Load projects ONCE
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadIncidents, 10000);
-    return () => clearInterval(interval);
+    loadProjects();
+  }, []);
+
+  // 🔹 Reload incidents only when filter changes
+  useEffect(() => {
+    loadIncidents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
-  const loadData = async () => {
+  const loadProjects = async () => {
     try {
-      const [projectsRes] = await Promise.all([
-        getProjects()
-      ]);
-      setProjects(projectsRes.data);
-      await loadIncidents();
+      const res = await getProjects();
+      setProjects(res.data);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('Failed to load projects:', error);
     }
   };
 
   const loadIncidents = async () => {
     try {
+      setLoading(true);
+
       const params = {};
       if (filter === 'open') params.resolved = 'false';
       else if (filter === 'closed') params.resolved = 'true';
-      
+
       const res = await getIncidents(params);
       setAllIncidents(res.data);
     } catch (error) {
@@ -45,7 +49,9 @@ export const Incidents = () => {
 
   // Group incidents by project
   const incidentsByProject = projects.reduce((acc, project) => {
-    const projectIncidents = allIncidents.filter(i => i.projectId === project.id);
+    const projectIncidents = allIncidents.filter(
+      i => i.projectId === project.id
+    );
     if (projectIncidents.length > 0) {
       acc[project.id] = {
         project,
@@ -58,9 +64,12 @@ export const Incidents = () => {
   const handleCloseIncident = async (id) => {
     try {
       await closeIncident(id);
-      loadIncidents();
+      await loadIncidents(); // reload once
     } catch (error) {
-      alert('Failed to close incident: ' + (error.response?.data?.error || error.message));
+      alert(
+        'Failed to close incident: ' +
+          (error.response?.data?.error || error.message)
+      );
     }
   };
 
@@ -68,26 +77,37 @@ export const Incidents = () => {
   const activeIncidents = allIncidents.filter(i => !i.resolved).length;
 
   if (loading) {
-    return <div className="text-center py-12 text-white">Loading...</div>;
+    return (
+      <div className="text-center py-12 text-white font-mono">
+        Loading...
+      </div>
+    );
   }
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-cyan-400">Incident History</h1>
-          <p className="text-white/60 text-sm mt-1">Log of all detected service anomalies and outages by project.</p>
+          <h1 className="text-2xl font-bold text-cyan-400">
+            Incident History
+          </h1>
+          <p className="text-white/60 text-sm mt-1">
+            Log of all detected service anomalies and outages by project.
+          </p>
           {selectedProject && (
-            <p className="text-white/60 text-sm mt-2 font-mono">{selectedProject.name.toLowerCase()}</p>
+            <p className="text-white/60 text-sm mt-2 font-mono">
+              {selectedProject.name.toLowerCase()}
+            </p>
           )}
         </div>
+
         <div className="flex items-center space-x-4">
           <div className="flex space-x-2">
             <button
               onClick={() => setFilter('all')}
               className={`px-4 py-2 font-semibold text-sm transition-colors ${
-                filter === 'all' 
-                  ? 'bg-cyan-400 text-black' 
+                filter === 'all'
+                  ? 'bg-cyan-400 text-black'
                   : 'bg-white text-gray-900 border border-white/20 hover:bg-white/90'
               }`}
             >
@@ -96,8 +116,8 @@ export const Incidents = () => {
             <button
               onClick={() => setFilter('open')}
               className={`px-4 py-2 font-semibold text-sm transition-colors ${
-                filter === 'open' 
-                  ? 'bg-cyan-400 text-black' 
+                filter === 'open'
+                  ? 'bg-cyan-400 text-black'
                   : 'bg-white text-gray-900 border border-white/20 hover:bg-white/90'
               }`}
             >
@@ -106,16 +126,19 @@ export const Incidents = () => {
             <button
               onClick={() => setFilter('closed')}
               className={`px-4 py-2 font-semibold text-sm transition-colors ${
-                filter === 'closed' 
-                  ? 'bg-cyan-400 text-black' 
+                filter === 'closed'
+                  ? 'bg-cyan-400 text-black'
                   : 'bg-white text-gray-900 border border-white/20 hover:bg-white/90'
               }`}
             >
               Closed
             </button>
           </div>
+
           <div className="flex items-center space-x-3">
-            <span className="text-white/60 text-sm">{totalIncidents} incidents</span>
+            <span className="text-white/60 text-sm">
+              {totalIncidents} incidents
+            </span>
             {activeIncidents > 0 && (
               <span className="text-xs bg-cyan-400 text-black px-2 py-1 font-semibold">
                 Active
@@ -127,12 +150,11 @@ export const Incidents = () => {
 
       {Object.keys(incidentsByProject).length === 0 ? (
         <div className="bg-black border border-white/20 p-12 text-center">
-          <svg className="w-16 h-16 text-white/40 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h3 className="text-lg font-semibold text-white mb-2">NO INCIDENTS FOUND</h3>
+          <h3 className="text-lg font-semibold text-white mb-2">
+            NO INCIDENTS FOUND
+          </h3>
           <p className="text-white/60">
-            {filter === 'open' 
+            {filter === 'open'
               ? 'No open incidents at this time. All services are healthy!'
               : filter === 'closed'
               ? 'No closed incidents found.'
@@ -141,30 +163,32 @@ export const Incidents = () => {
         </div>
       ) : (
         <div className="space-y-8">
-          {Object.values(incidentsByProject).map(({ project, incidents }) => (
-            <div key={project.id} className="space-y-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div>
-                  <h2 className="text-xl font-bold text-white">{project.name}</h2>
-                  {project.description && (
-                    <p className="text-sm text-white/60 mt-1">{project.description}</p>
-                  )}
-                </div>
-                <div className="flex items-center space-x-4">
+          {Object.values(incidentsByProject).map(
+            ({ project, incidents }) => (
+              <div key={project.id} className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      {project.name}
+                    </h2>
+                    {project.description && (
+                      <p className="text-sm text-white/60 mt-1">
+                        {project.description}
+                      </p>
+                    )}
+                  </div>
                   <span className="text-sm text-white/60">
-                    {incidents.length} incident{incidents.length !== 1 ? 's' : ''}
-                    {filter === 'open' && ` (${incidents.filter(i => !i.resolved).length} open)`}
+                    {incidents.length} incident
+                    {incidents.length !== 1 ? 's' : ''}
                   </span>
-                  {selectedProject?.id === project.id && (
-                    <span className="text-xs bg-cyan-400 text-black px-2 py-1 font-semibold">
-                      Active
-                    </span>
-                  )}
                 </div>
+                <IncidentTable
+                  incidents={incidents}
+                  onClose={handleCloseIncident}
+                />
               </div>
-              <IncidentTable incidents={incidents} onClose={handleCloseIncident} />
-            </div>
-          ))}
+            )
+          )}
         </div>
       )}
     </div>

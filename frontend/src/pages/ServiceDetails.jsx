@@ -17,24 +17,29 @@ export const ServiceDetails = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const pollIntervalRef = useRef(null);
+const isMountedRef = useRef(false);
 
-  useEffect(() => {
-    loadService();
-    
-    // Use shared socket instance
-    const socket = getSocket();
-    
-    socket.on('healthUpdate', (data) => {
-      if (data.serviceId === id) {
-        setService(prev => prev ? { ...prev, status: data.status, latency: data.latency, cpu: data.cpu, memory: data.memory } : null);
-      }
-    });
+useEffect(() => {
+  isMountedRef.current = true;
 
-    return () => {
-      socket.off('healthUpdate');
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    };
-  }, [id]);
+  loadService();
+
+  const socket = getSocket();
+
+  socket?.on('healthUpdate', (data) => {
+    if (data.serviceId === id && isMountedRef.current) {
+      setService(prev =>
+        prev ? { ...prev, ...data } : prev
+      );
+    }
+  });
+
+  return () => {
+    isMountedRef.current = false;
+    socket?.off('healthUpdate');
+  };
+}, [id]);
+
 
   const loadService = async () => {
     try {
@@ -64,6 +69,7 @@ export const ServiceDetails = () => {
   };
 
   const fetchData = useCallback(async () => {
+     if (!isMountedRef.current) return;
     if (!service || !service.id) return;
     
     try {
@@ -99,16 +105,7 @@ export const ServiceDetails = () => {
     }
   }, [service, activeTab]);
 
-  useEffect(() => {
-    if (service) {
-      fetchData();
-      // Increase polling interval to 10 seconds to reduce load
-      pollIntervalRef.current = setInterval(fetchData, 10000);
-    }
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    };
-  }, [service, fetchData]);
+
 
   // Fetch data immediately when tab changes (without recreating interval)
   useEffect(() => {

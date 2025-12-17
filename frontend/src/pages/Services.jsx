@@ -11,6 +11,7 @@ export const Services = () => {
   const [allServices, setAllServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+    const isMountedRef = useRef(false);
   const [formData, setFormData] = useState({
     name: '',
     url: '',
@@ -19,53 +20,59 @@ export const Services = () => {
     ownerEmail: ''
   });
 
-  useEffect(() => {
+ useEffect(() => {
+    isMountedRef.current = true;
     loadData();
 
-    // Use shared socket instance
     const socket = getSocket();
 
-    socket.on('healthUpdate', (data) => {
-      setAllServices(prev => prev.map(s => 
-        s.id === data.serviceId 
-          ? { ...s, status: data.status, latency: data.latency, cpu: data.cpu, memory: data.memory }
-          : s
-      ));
-    });
+    const onHealthUpdate = (data) => {
+      if (!isMountedRef.current) return;
+
+      setAllServices((prev) =>
+        prev.map((s) =>
+          s.id === data.serviceId
+            ? {
+                ...s,
+                status: data.status,
+                latency: data.latency,
+                cpu: data.cpu,
+                memory: data.memory
+              }
+            : s
+        )
+      );
+    };
+
+    socket?.on('healthUpdate', onHealthUpdate);
 
     return () => {
-      socket.off('healthUpdate');
+      isMountedRef.current = false;
+      socket?.off('healthUpdate', onHealthUpdate);
     };
   }, []);
 
-  const loadData = async () => {
+const loadData = async () => {
     try {
       setLoading(true);
-      const servicesRes = await getServices(); // Get all services from all projects
-      console.log('Services loaded:', servicesRes.data);
-      setAllServices(servicesRes.data);
-      
-      if (servicesRes.data.length === 0) {
-        console.log('No services registered. Click "+ Add Service" to add your first service.');
+      const res = await getServices();
+      if (isMountedRef.current) {
+        setAllServices(res.data);
       }
     } catch (error) {
       console.error('Failed to load services:', error);
-      
-      // Handle rate limit error gracefully
+
       if (error.response?.status === 429) {
-        console.warn('Rate limit hit, retrying in 2 seconds...');
-        setTimeout(() => {
-          loadData();
-        }, 2000);
+        setTimeout(loadData, 2000);
         return;
       }
-      
-      // Only show alert for non-rate-limit errors
-      if (error.response?.status !== 429) {
-        alert('Failed to load services: ' + (error.response?.data?.error || error.message));
-      }
+
+      alert(
+        'Failed to load services: ' +
+          (error.response?.data?.error || error.message)
+      );
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
