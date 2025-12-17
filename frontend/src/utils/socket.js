@@ -4,53 +4,45 @@ let socketInstance = null;
 
 export const getSocket = () => {
   if (!socketInstance) {
-    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    
+    // ✅ Use the CORRECT env variable
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+    // ✅ Safety check
+    if (!apiBaseUrl) {
+      console.warn('❌ VITE_API_BASE_URL not set. Socket will not connect.');
+      return null;
+    }
+
+    // ✅ Remove `/api` to get pure backend URL
+    const socketUrl = apiBaseUrl.replace(/\/api$/, '');
+
     socketInstance = io(socketUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],   // avoid polling issues
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: 5,     // avoid infinite spam
+      reconnectionDelay: 2000,
       timeout: 20000,
-      forceNew: false,
-      autoConnect: true
+      autoConnect: true,
     });
 
     socketInstance.on('connect', () => {
-      console.log('Socket connected:', socketInstance.id);
+      console.log('✅ Socket connected:', socketInstance.id);
     });
 
     socketInstance.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-      if (reason === 'io server disconnect') {
-        // Server disconnected the socket, reconnect manually
-        socketInstance.connect();
-      }
+      console.log('⚠️ Socket disconnected:', reason);
     });
 
     socketInstance.on('connect_error', (error) => {
-      console.warn('Socket connection error:', error.message);
-      // Don't log as error if it's just a reconnection attempt
-      if (error.message !== 'xhr poll error') {
-        console.warn('Socket will attempt to reconnect...');
-      }
+      console.warn('⚠️ Socket connection error:', error.message);
     });
 
-    socketInstance.on('reconnect', (attemptNumber) => {
-      console.log('Socket reconnected after', attemptNumber, 'attempts');
-    });
-
-    socketInstance.on('reconnect_attempt', (attemptNumber) => {
-      console.log('Socket reconnection attempt', attemptNumber);
-    });
-
-    socketInstance.on('reconnect_error', (error) => {
-      console.warn('Socket reconnection error:', error.message);
+    socketInstance.on('reconnect_attempt', (attempt) => {
+      console.log('🔁 Socket reconnect attempt:', attempt);
     });
 
     socketInstance.on('reconnect_failed', () => {
-      console.error('Socket reconnection failed after all attempts');
+      console.error('❌ Socket reconnection failed');
     });
   }
 
@@ -63,4 +55,3 @@ export const disconnectSocket = () => {
     socketInstance = null;
   }
 };
-
