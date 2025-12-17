@@ -61,17 +61,13 @@ export const Alerts = () => {
 
   // Filter to show only user-facing alerts
   const userFacingAlerts = alerts.filter(
-    a =>
-      a.channel === 'email' ||
-      a.channel === 'slack' ||
-      a.channel === 'telegram' ||
-      a.channel === 'whatsapp'
+    a => a.channel === 'email'
   );
 
   const filteredAlerts =
     filter === 'all'
       ? userFacingAlerts
-      : userFacingAlerts.filter(a => a.channel === filter);
+      : userFacingAlerts.filter(a => a.channel === filter && a.channel === 'email');
 
   if (loading) {
     return (
@@ -92,10 +88,7 @@ export const Alerts = () => {
   }
 
   const channelColors = {
-    slack: 'bg-purple-600 text-white',
-    telegram: 'bg-blue-600 text-white',
-    email: 'bg-green-600 text-white',
-    whatsapp: 'bg-emerald-600 text-white'
+    email: 'bg-green-600 text-white'
   };
 
   return (
@@ -132,7 +125,7 @@ export const Alerts = () => {
       </div>
 
       <div className="flex space-x-2">
-        {['all', 'slack', 'telegram', 'email', 'whatsapp'].map(type => (
+        {['all', 'email'].map(type => (
           <button
             key={type}
             onClick={() => setFilter(type)}

@@ -24,10 +24,7 @@ export const AlertRules = () => {
       notifyOnSloViolation: true
     },
     channels: {
-      slack: { enabled: false, webhookUrl: '' },
-      telegram: { enabled: false, botToken: '', chatId: '' },
-      email: { enabled: false, recipients: [] },
-      whatsapp: { enabled: false, phoneNumberId: '', accessToken: '', chatId: '' }
+      email: { enabled: false, recipients: [] }
     }
   });
 
@@ -101,10 +98,7 @@ export const AlertRules = () => {
         notifyOnSloViolation: true
       },
       channels: {
-        slack: { enabled: false, webhookUrl: '' },
-        telegram: { enabled: false, botToken: '', chatId: '' },
-        email: { enabled: false, recipients: [] },
-        whatsapp: { enabled: false, phoneNumberId: '', accessToken: '', chatId: '' }
+        email: { enabled: false, recipients: [] }
       }
     });
   };
@@ -190,10 +184,7 @@ export const AlertRules = () => {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-2">
-                    {rule.channels.slack?.enabled && <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded font-mono">Slack</span>}
-                    {rule.channels.telegram?.enabled && <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded font-mono">Telegram</span>}
                     {rule.channels.email?.enabled && <span className="text-xs bg-green-600 text-white px-2 py-1 rounded font-mono">Email</span>}
-                    {rule.channels.whatsapp?.enabled && <span className="text-xs bg-emerald-600 text-white px-2 py-1 rounded font-mono">WhatsApp</span>}
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -326,6 +317,47 @@ export const AlertRules = () => {
                     />
                     <label className="text-white font-mono text-sm">Notify on SLO violation</label>
                   </div>
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-800 pt-4">
+                <h3 className="text-sm font-bold text-white font-mono mb-4">Notification Channels</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.channels.email?.enabled || false}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        channels: {
+                          ...formData.channels,
+                          email: { ...formData.channels.email, enabled: e.target.checked }
+                        }
+                      })}
+                    />
+                    <label className="text-white font-mono text-sm">Email Notifications</label>
+                  </div>
+                  {formData.channels.email?.enabled && (
+                    <div className="ml-6">
+                      <label className="block text-sm text-zinc-400 font-mono mb-2">Email Recipients (comma-separated)</label>
+                      <input
+                        type="text"
+                        value={formData.channels.email?.recipients?.join(', ') || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          channels: {
+                            ...formData.channels,
+                            email: {
+                              ...formData.channels.email,
+                              recipients: e.target.value.split(',').map(email => email.trim()).filter(email => email)
+                            }
+                          }
+                        })}
+                        placeholder="user@example.com, admin@example.com"
+                        className="w-full bg-zinc-900 border border-zinc-800 text-white px-3 py-2 font-mono text-sm"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

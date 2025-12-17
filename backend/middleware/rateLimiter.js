@@ -14,8 +14,8 @@ const getClientIp = (req) => {
 };
 
 export const apiLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 5000, // Increased to 5000 for production
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 5 * 60 * 1000, // 5 minutes (shorter window = faster recovery)
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 20000, // 20,000 requests per 5 minutes
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
