@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
 import { IncidentTable } from '../components/IncidentTable';
 import { getIncidents, closeIncident, getProjects } from '../services/api';
 import { useProject } from '../context/ProjectContext';
@@ -9,14 +9,17 @@ export const Incidents = () => {
   const [projects, setProjects] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-
+const loadedRef = useRef(false);
   // 🔹 Load projects ONCE
   useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
     loadProjects();
   }, []);
 
   // 🔹 Reload incidents only when filter changes
   useEffect(() => {
+    
     loadIncidents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
@@ -26,7 +29,7 @@ export const Incidents = () => {
       const res = await getProjects();
       setProjects(res.data);
     } catch (error) {
-      console.error('Failed to load projects:', error);
+      console.error(e);
     }
   };
 
@@ -40,8 +43,8 @@ export const Incidents = () => {
 
       const res = await getIncidents(params);
       setAllIncidents(res.data);
-    } catch (error) {
-      console.error('Failed to load incidents:', error);
+    } catch (e) {
+      if (e.response?.status === 429) return;
     } finally {
       setLoading(false);
     }

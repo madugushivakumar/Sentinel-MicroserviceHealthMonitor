@@ -17,9 +17,12 @@ export const Projects = () => {
   });
 
   const mountedRef = useRef(true);
-
+ const loadedRef = useRef(false);
   // 🔹 Load projects ONCE
   useEffect(() => {
+     if (loadedRef.current) return;
+    loadedRef.current = true;
+    mountedRef.current = true;
     loadProjects();
 
     return () => {
@@ -38,15 +41,16 @@ export const Projects = () => {
       setProjects(res.data);
       refreshProjects(); // sync context
     } catch (error) {
-      console.error('Failed to load projects:', error);
-      alert(
-        'Failed to load projects: ' +
-          (error.response?.data?.error || error.message)
-      );
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
+       if (error.response?.status === 429) {
+        console.warn('Rate limited: skipping retry');
+        return;
       }
+      console.error('Failed to load projects:', error);
+     
+    } finally {
+      if (mountedRef.current) 
+        setLoading(false);
+      
     }
   };
 
@@ -64,10 +68,9 @@ export const Projects = () => {
       selectProject(res.data);
       navigate('/dashboard');
     } catch (error) {
-      alert(
-        'Failed to create project: ' +
+      alert
           (error.response?.data?.error || error.message)
-      );
+      
     }
   };
 
@@ -76,18 +79,16 @@ export const Projects = () => {
       !window.confirm(
         'Are you sure you want to delete this project? This action cannot be undone.'
       )
-    ) {
+    )
       return;
-    }
+    
 
     try {
       await deleteProject(id);
       await loadProjects();
     } catch (error) {
-      alert(
-        'Failed to delete project: ' +
+      alert
           (error.response?.data?.error || error.message)
-      );
     }
   };
 
@@ -97,11 +98,11 @@ export const Projects = () => {
   };
 
   if (loading) {
-    return (
+    return 
       <div className="text-center py-12 text-white">
         Loading projects...
       </div>
-    );
+    
   }
 
   return (

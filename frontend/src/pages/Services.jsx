@@ -13,6 +13,7 @@ export const Services = () => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
     const isMountedRef = useRef(false);
+    const loadedRef = useRef(false);
   const [formData, setFormData] = useState({
     name: '',
     url: '',
@@ -22,6 +23,7 @@ export const Services = () => {
   });
 
  useEffect(() => {
+  loadedRef.current = true;
     isMountedRef.current = true;
     loadData();
 
@@ -61,17 +63,14 @@ const loadData = async () => {
         setAllServices(res.data);
       }
     } catch (error) {
-      console.error('Failed to load services:', error);
+  
 
       if (error.response?.status === 429) {
-        setTimeout(loadData, 2000);
+       console.warn('429 hit – skipping retry');
         return;
       }
 
-      alert(
-        'Failed to load services: ' +
-          (error.response?.data?.error || error.message)
-      );
+      console.error(error);
     } finally {
       if (isMountedRef.current) setLoading(false);
     }

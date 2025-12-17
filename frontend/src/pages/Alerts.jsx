@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef} from 'react';
 import { getAlerts, testAlert, getServices } from '../services/api';
 import { useProject } from '../context/ProjectContext';
 
@@ -9,21 +9,16 @@ export const Alerts = () => {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [testServiceId, setTestServiceId] = useState('');
-
+const loadedRef = useRef(false);
   useEffect(() => {
-    if (selectedProject) {
+     if (!selectedProject || loadedRef.current) return;
+    loadedRef.current = true; 
       loadData();
-    }
-  }, [filter, selectedProject]);
+    
+  }, [selectedProject]);
 
   const loadData = async () => {
-    if (!selectedProject) {
-      setAlerts([]);
-      setServices([]);
-      setLoading(false);
-      return;
-    }
-
+  
     try {
       setLoading(true);
       const [alertsRes, servicesRes] = await Promise.all([
@@ -32,8 +27,8 @@ export const Alerts = () => {
       ]);
       setAlerts(alertsRes.data);
       setServices(servicesRes.data);
-    } catch (error) {
-      console.error('Failed to load data:', error);
+    } catch (e) {
+     if (e.response?.status === 429) return;
     } finally {
       setLoading(false);
     }
