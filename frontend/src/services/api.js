@@ -1,4 +1,5 @@
 import axios from 'axios';
+let rateLimitHandler = null;
 
 // ==============================
 // Request Cache & Deduplication
@@ -236,5 +237,9 @@ export const getAllMonthlyReports = (serviceId) =>
 // ==============================
 export const testEmail = (email, serviceName) =>
   api.post('/debug/test-email', { email, serviceName });
+
+export const setRateLimitHandler = (handler) => {
+  rateLimitHandler = handler;
+};
 
 export default api;
