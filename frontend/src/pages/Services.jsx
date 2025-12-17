@@ -14,6 +14,7 @@ export const Services = () => {
   const [showAddModal, setShowAddModal] = useState(false);
     const isMountedRef = useRef(false);
     const loadedRef = useRef(false);
+    const requestInFlight = useRef(false);
   const [formData, setFormData] = useState({
     name: '',
     url: '',
@@ -23,6 +24,8 @@ export const Services = () => {
   });
 
  useEffect(() => {
+   if (!selectedProject) return;
+  if (loadedRef.current) return;
   loadedRef.current = true;
     isMountedRef.current = true;
     loadData();
@@ -53,9 +56,11 @@ export const Services = () => {
       isMountedRef.current = false;
       socket?.off('healthUpdate', onHealthUpdate);
     };
-  }, []);
+  }, [selectedProject]);
 
 const loadData = async () => {
+   if (requestInFlight.current) return;
+  requestInFlight.current = true;
     try {
       setLoading(true);
       const res = await getServices();
@@ -65,11 +70,7 @@ const loadData = async () => {
     } catch (error) {
   
 
-      if (error.response?.status === 429) {
-       console.warn('429 hit – skipping retry');
-        return;
-      }
-
+      if (error.response?.status === 429) 
       console.error(error);
     } finally {
       if (isMountedRef.current) setLoading(false);

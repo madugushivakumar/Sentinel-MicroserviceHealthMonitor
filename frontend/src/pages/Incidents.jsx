@@ -10,20 +10,16 @@ export const Incidents = () => {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 const loadedRef = useRef(false);
+const requestInFlight = useRef(false);
   // 🔹 Load projects ONCE
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
     loadProjects();
+     loadIncidents('all');
   }, []);
 
   // 🔹 Reload incidents only when filter changes
-  useEffect(() => {
-    
-    loadIncidents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
-
   const loadProjects = async () => {
     try {
       const res = await getProjects();
@@ -33,34 +29,30 @@ const loadedRef = useRef(false);
     }
   };
 
-  const loadIncidents = async () => {
+  const loadIncidents = async (filterValue = filter) => {
+     if (requestInFlight.current) return;
+    requestInFlight.current = true;
     try {
       setLoading(true);
 
       const params = {};
       if (filter === 'open') params.resolved = 'false';
-      else if (filter === 'closed') params.resolved = 'true';
+       if (filter === 'closed') params.resolved = 'true';
 
       const res = await getIncidents(params);
       setAllIncidents(res.data);
     } catch (e) {
       if (e.response?.status === 429) return;
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   };
 
   // Group incidents by project
   const incidentsByProject = projects.reduce((acc, project) => {
-    const projectIncidents = allIncidents.filter(
-      i => i.projectId === project.id
-    );
-    if (projectIncidents.length > 0) {
-      acc[project.id] = {
-        project,
-        incidents: projectIncidents
-      };
-    }
+    const list = allIncidents.filter(i => i.projectId === project.id);
+    if (list.length) acc[project.id] = { project, incidents: list };
     return acc;
   }, {});
 
@@ -69,10 +61,7 @@ const loadedRef = useRef(false);
       await closeIncident(id);
       await loadIncidents(); // reload once
     } catch (error) {
-      alert(
-        'Failed to close incident: ' +
-          (error.response?.data?.error || error.message)
-      );
+      alert(error.message);
     }
   };
 
