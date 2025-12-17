@@ -68,11 +68,13 @@ const loadData = async () => {
         setAllServices(res.data);
       }
     } catch (error) {
-  
-
-      if (error.response?.status === 429) 
+      if (error.response?.status === 429) {
+        console.warn('Rate limited: skipping retry');
+        return;
+      }
       console.error(error);
     } finally {
+      requestInFlight.current = false;
       if (isMountedRef.current) setLoading(false);
     }
   };

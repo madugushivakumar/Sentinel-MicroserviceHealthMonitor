@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { getProjects } from '../services/api';
 
 const ProjectContext = createContext();
@@ -15,9 +15,14 @@ export const ProjectProvider = ({ children }) => {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(false);
+  const loadedRef = useRef(false);
 
-  // Load projects on mount
+  // Load projects on mount - ONLY ONCE
   useEffect(() => {
+    if (loadedRef.current || loadingRef.current) return;
+    loadedRef.current = true;
+    loadingRef.current = true;
     loadProjects();
   }, []);
 
@@ -41,13 +46,20 @@ export const ProjectProvider = ({ children }) => {
   }, [projects]);
 
   const loadProjects = async () => {
+    if (loadingRef.current) return; // Prevent concurrent loads
     try {
+      loadingRef.current = true;
       setLoading(true);
       const res = await getProjects();
       setProjects(res.data);
     } catch (error) {
+      if (error.response?.status === 429) {
+        console.warn('Rate limited: skipping project load');
+        return;
+      }
       console.error('Failed to load projects:', error);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
@@ -58,6 +70,8 @@ export const ProjectProvider = ({ children }) => {
   };
 
   const refreshProjects = () => {
+    loadingRef.current = false; // Allow refresh
+    loadedRef.current = false; // Reset loaded flag
     loadProjects();
   };
 
