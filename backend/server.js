@@ -9,6 +9,9 @@ import { dirname } from 'path';
 import connectDB from './config/database.js';
 import { initializeHealthCheckCron } from './cron/healthCheckCron.js';
 
+// ✅ STEP-6: Rate Limiter import
+import { apiLimiter } from './middleware/rateLimiter.js';
+
 // Routes
 import projectsRoutes from './routes/projects.js';
 import servicesRoutes from './routes/services.js';
@@ -38,12 +41,12 @@ if (!process.env.MONGODB_URI) {
 const app = express();
 const httpServer = createServer(app);
 
-// Render / proxy fix
+// ✅ Render / proxy fix (VERY IMPORTANT)
 app.set('trust proxy', 1);
 
 // ---------- ALLOWED ORIGINS ----------
 const allowedOrigins = [
-    'https://sentinel-microservice-health-monito.vercel.app',
+  'https://sentinel-microservice-health-monito.vercel.app',
   'https://sentinel-microservice-health-monito-eight.vercel.app',
   'http://localhost:5173'
 ];
@@ -63,6 +66,9 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ---------- STEP-6: RATE LIMITER (API ONLY) ----------
+app.use('/api', apiLimiter);
 
 // ---------- SOCKET.IO ----------
 const io = new Server(httpServer, {

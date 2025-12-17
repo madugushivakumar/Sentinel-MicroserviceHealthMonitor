@@ -4,25 +4,25 @@ let socketInstance = null;
 
 export const getSocket = () => {
   if (!socketInstance) {
-    // ✅ Use the CORRECT env variable
+    // ✅ Use the correct Vite env variable
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
-    // ✅ Safety check
+    // ✅ Safety check (important for prod)
     if (!apiBaseUrl) {
       console.warn('❌ VITE_API_BASE_URL not set. Socket will not connect.');
       return null;
     }
 
-    // ✅ Remove `/api` to get pure backend URL
+    // ✅ Remove `/api` safely to get backend base URL
     const socketUrl = apiBaseUrl.replace(/\/api$/, '');
 
     socketInstance = io(socketUrl, {
       transports: ['websocket'],   // avoid polling issues
       reconnection: true,
-      reconnectionAttempts: 5,     // avoid infinite spam
+      reconnectionAttempts: 5,     // prevent infinite spam
       reconnectionDelay: 2000,
       timeout: 20000,
-      autoConnect: true,
+      autoConnect: true
     });
 
     socketInstance.on('connect', () => {
