@@ -43,6 +43,7 @@ app.set('trust proxy', 1);
 
 // ---------- ALLOWED ORIGINS ----------
 const allowedOrigins = [
+    'https://sentinel-microservice-health-monito.vercel.app',
   'https://sentinel-microservice-health-monito-eight.vercel.app',
   'http://localhost:5173'
 ];
