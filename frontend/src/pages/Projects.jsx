@@ -96,14 +96,14 @@ export const Projects = () => {
     selectProject(project);
     navigate('/services');
   };
+if (loading) {
+  return (
+    <div className="text-center py-12 text-white">
+      Loading projects...
+    </div>
+  );
+}
 
-  if (loading) {
-    return 
-      <div className="text-center py-12 text-white">
-        Loading projects...
-      </div>
-    
-  }
 
   return (
     <div className="space-y-6">
