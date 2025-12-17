@@ -1,60 +1,103 @@
 import axios from 'axios';
 
+// ==============================
+// Base Axios Instance
+// ==============================
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
-// Projects API
+// ==============================
+// ENV SAFETY CHECK
+// ==============================
+if (!import.meta.env.VITE_API_BASE_URL) {
+  console.error(
+    '❌ VITE_API_BASE_URL is not defined. ' +
+    'Please set it in Vercel or .env file.'
+  );
+}
+
+// ==============================
+// PROJECTS API
+// ==============================
 export const getProjects = () => api.get('/projects');
 export const getProject = (id) => api.get(`/projects/${id}`);
 export const createProject = (data) => api.post('/projects', data);
 export const updateProject = (id, data) => api.put(`/projects/${id}`, data);
 export const deleteProject = (id) => api.delete(`/projects/${id}`);
 
-// Services API
+// ==============================
+// SERVICES API
+// ==============================
 export const getServices = (projectId) => {
   const params = projectId ? { projectId } : {};
   return api.get('/services', { params });
 };
+
 export const getService = (id) => api.get(`/services/${id}`);
 export const createService = (data) => api.post('/services', data);
 export const updateService = (id, data) => api.put(`/services/${id}`, data);
 export const deleteService = (id) => api.delete(`/services/${id}`);
+
 export const cleanupDuplicateServices = () =>
   api.post('/services/cleanup-duplicates');
 
-// Health API
+// ==============================
+// HEALTH API
+// ==============================
 export const getLatestHealth = () => api.get('/health/latest');
+
 export const getHealthHistory = (serviceId, hours = 24) =>
   api.get(`/health/${serviceId}/history`, { params: { hours } });
+
 export const triggerHealthCheck = () => api.post('/health/trigger');
 
-// Incidents API
+// ==============================
+// INCIDENTS API
+// ==============================
 export const getIncidents = (params = {}) =>
   api.get('/incidents', { params });
+
 export const closeIncident = (id) =>
   api.patch(`/incidents/${id}/close`);
 
-// Alerts API
+// ==============================
+// ALERTS API
+// ==============================
 export const getAlerts = (params = {}) =>
   api.get('/alerts', { params });
+
 export const testAlert = (data) =>
   api.post('/alerts/test', data);
 
-// Reliability API
+// ==============================
+// RELIABILITY API
+// ==============================
 export const getReliabilityScores = () =>
   api.get('/reliability');
+
 export const getReliabilityScore = (serviceId) =>
   api.get(`/reliability/${serviceId}`);
+
 export const recalculateReliability = (serviceId = null) =>
   api.post('/reliability/recalculate', serviceId ? { serviceId } : {});
 
-// Health & Metrics Proxy
+// ==============================
+// HEALTH & METRICS PROXY
+// ==============================
 export const fetchServiceHealth = async (serviceId) => {
   try {
     const res = await api.get(`/health/proxy/${serviceId}`);
-    if (res.data.error) throw new Error(res.data.error);
+
+    if (res.data?.error) {
+      throw new Error(res.data.error);
+    }
+
     return res.data.data;
   } catch (error) {
     throw new Error(
@@ -68,13 +111,18 @@ export const fetchServiceHealth = async (serviceId) => {
 export const fetchServiceMetrics = async (serviceId) => {
   try {
     const res = await api.get(`/health/proxy/${serviceId}/metrics`);
+
     if (res.data?.data?.available === false) {
       throw new Error(res.data.data.error || 'Metrics not available');
     }
-    if (res.data.error) throw new Error(res.data.error);
+
+    if (res.data?.error) {
+      throw new Error(res.data.error);
+    }
+
     return res.data.data;
   } catch (error) {
-    console.warn('Metrics fetch failed:', error.message);
+    console.warn('⚠️ Metrics fetch failed:', error.message);
     return null;
   }
 };
@@ -82,7 +130,11 @@ export const fetchServiceMetrics = async (serviceId) => {
 export const fetchServiceSelftest = async (serviceId) => {
   try {
     const res = await api.get(`/health/proxy/${serviceId}/selftest`);
-    if (res.data.error) throw new Error(res.data.error);
+
+    if (res.data?.error) {
+      throw new Error(res.data.error);
+    }
+
     return res.data.data;
   } catch (error) {
     throw new Error(
@@ -93,28 +145,46 @@ export const fetchServiceSelftest = async (serviceId) => {
   }
 };
 
-// Alert Rules API
+// ==============================
+// ALERT RULES API
+// ==============================
 export const getAlertRules = (params = {}) =>
   api.get('/alert-rules', { params });
+
 export const getAlertRule = (id) =>
   api.get(`/alert-rules/${id}`);
+
 export const createAlertRule = (data) =>
   api.post('/alert-rules', data);
+
 export const updateAlertRule = (id, data) =>
   api.put(`/alert-rules/${id}`, data);
+
 export const deleteAlertRule = (id) =>
   api.delete(`/alert-rules/${id}`);
 
-// Reports API
-export const getMonthlyReport = (serviceId, month, year, period = null) => {
+// ==============================
+// REPORTS API
+// ==============================
+export const getMonthlyReport = (
+  serviceId,
+  month,
+  year,
+  period = null
+) => {
   const params = { month, year };
   if (period) params.period = period;
+
   return api.get(`/reports/monthly/${serviceId}`, { params });
 };
 
 export const getAllMonthlyReports = (serviceId) =>
   api.get(`/reports/monthly/${serviceId}/all`);
 
-// Debug API
+// ==============================
+// DEBUG API
+// ==============================
 export const testEmail = (email, serviceName) =>
   api.post('/debug/test-email', { email, serviceName });
+
+export default api;

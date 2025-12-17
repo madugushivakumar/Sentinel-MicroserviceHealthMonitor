@@ -5,6 +5,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+
 import connectDB from './config/database.js';
 import { initializeHealthCheckCron } from './cron/healthCheckCron.js';
 
@@ -21,58 +22,69 @@ import reportsRoutes from './routes/reports.js';
 import npmGeneratorRoutes from './routes/npmGenerator.js';
 import debugRoutes from './routes/debug.js';
 
-// Get current directory
+dotenv.config();
+
+// ---------- PATH SETUP ----------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables
-dotenv.config();
-
-// Verify MONGODB_URI is set
+// ---------- ENV VALIDATION ----------
 if (!process.env.MONGODB_URI) {
   console.error('❌ MONGODB_URI is not set');
-  console.error('Please configure it in environment variables');
   process.exit(1);
 }
 
+// ---------- APP SETUP ----------
 const app = express();
 const httpServer = createServer(app);
 
-// Socket.IO setup
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    methods: ["GET", "POST"],
-    credentials: true
-  },
-  transports: ['websocket', 'polling'],
-  allowEIO3: true
-});
+// Render / proxy fix
+app.set('trust proxy', 1);
 
-// Middleware
+// ---------- ALLOWED ORIGINS ----------
+const allowedOrigins = [
+  'https://sentinel-microservice-health-monito-eight.vercel.app',
+  'http://localhost:5173'
+];
+
+// ---------- EXPRESS CORS ----------
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Trust proxy (important for rate limiting & Render)
-app.set('trust proxy', 1);
+// ---------- SOCKET.IO ----------
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
 
-// Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('🔌 Socket connected:', socket.id);
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log('❌ Socket disconnected:', socket.id);
   });
 });
 
-// Make io available to routes
+// Make socket available in routes
 app.set('io', io);
 
-// API Routes
+// ---------- API ROUTES ----------
 app.use('/api/projects', projectsRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/health', healthRoutes);
@@ -82,15 +94,15 @@ app.use('/api/alert-rules', alertRulesRoutes);
 app.use('/api/reliability', reliabilityRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/npm-generator', npmGeneratorRoutes);
-app.use('/metrics', metricsRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/metrics', metricsRoutes);
 
-// Health check endpoint
+// ---------- HEALTH ----------
 app.get('/health', (req, res) => {
   res.json({ status: 'UP', timestamp: new Date().toISOString() });
 });
 
-// Root endpoint
+// ---------- ROOT ----------
 app.get('/', (req, res) => {
   res.json({
     message: 'Sentinel Microservice Health Monitor API',
@@ -98,33 +110,27 @@ app.get('/', (req, res) => {
   });
 });
 
-// Database connection flag
+// ---------- DB FLAG ----------
 let dbConnected = false;
 
+// ---------- START SERVER ----------
 const startServer = async () => {
   try {
-    // Connect DB
     await connectDB();
     dbConnected = true;
 
-    // Start cron jobs after DB connection
     initializeHealthCheckCron(io);
 
     const PORT = process.env.PORT || 5000;
-
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🏥 Health endpoint: /health`);
-      console.log(`📈 Metrics endpoint: /metrics`);
     });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
+  } catch (err) {
+    console.error('❌ Server failed to start:', err);
     process.exit(1);
   }
 };
 
-// Start server
 startServer();
 
-// Export for routes
 export { dbConnected };
