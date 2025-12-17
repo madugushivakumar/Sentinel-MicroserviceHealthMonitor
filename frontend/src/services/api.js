@@ -1,6 +1,17 @@
 import axios from 'axios';
 
 // ==============================
+// Request Cache & Deduplication
+// ==============================
+const requestCache = new Map();
+const pendingRequests = new Map();
+const CACHE_DURATION = 3000; // 3 seconds cache
+
+const getCacheKey = (config) => {
+  return `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params || {})}`;
+};
+
+// ==============================
 // Base Axios Instance
 // ==============================
 const api = axios.create({
@@ -21,6 +32,45 @@ if (!import.meta.env.VITE_API_BASE_URL) {
     'Please set it in Vercel or .env file.'
   );
 }
+
+// ==============================
+// Request Interceptor - Simple Tracking
+// ==============================
+api.interceptors.request.use(
+  (config) => {
+    // Just track the request, don't interfere with it
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ==============================
+// Response Interceptor - Handle 429 Errors
+// ==============================
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  async (error) => {
+    // Handle 429 Rate Limit Errors - Show wait timer
+    if (error.response?.status === 429) {
+      console.warn('Rate limited: skipping retry');
+      // Trigger rate limit wait component
+      if (rateLimitHandler) {
+        rateLimitHandler();
+      }
+      return Promise.reject(error);
+    }
+    
+    // For network errors, don't retry automatically
+    if (!error.response && error.code === 'ERR_NETWORK') {
+      console.warn('Network error: skipping retry');
+      return Promise.reject(error);
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 // ==============================
 // PROJECTS API

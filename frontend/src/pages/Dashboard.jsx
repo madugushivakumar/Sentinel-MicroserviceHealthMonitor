@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServiceCard } from '../components/ServiceCard';
 import { IncidentTable } from '../components/IncidentTable';
@@ -13,16 +13,26 @@ export const Dashboard = () => {
   const [incidents, setIncidents] = useState([]);
   const [reliabilityScores, setReliabilityScores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const requestInFlight = useRef(false);
+  const lastProjectId = useRef(null);
 
   useEffect(() => {
-    if (selectedProject) {
-      loadData();
-    } else {
+    // Prevent duplicate requests for the same project
+    if (!selectedProject) {
       setServices([]);
       setIncidents([]);
       setReliabilityScores([]);
       setLoading(false);
+      return;
     }
+
+    // Skip if already loading this project
+    if (requestInFlight.current || lastProjectId.current === selectedProject.id) {
+      return;
+    }
+
+    lastProjectId.current = selectedProject.id;
+    loadData();
 
     // ✅ shared socket (no reconnect spam)
     const socket = getSocket();
@@ -53,9 +63,10 @@ export const Dashboard = () => {
   }, [selectedProject]);
 
   const loadData = async () => {
-    if (!selectedProject) return;
+    if (!selectedProject || requestInFlight.current) return;
 
     try {
+      requestInFlight.current = true;
       setLoading(true);
 
       const [servicesRes, incidentsRes, reliabilityRes] = await Promise.all([
@@ -68,9 +79,13 @@ export const Dashboard = () => {
       setIncidents(incidentsRes.data);
       setReliabilityScores(reliabilityRes.data || []);
     } catch (error) {
+      if (error.response?.status === 429) {
+        console.warn('Rate limited: skipping retry');
+        return;
+      }
       console.error('Failed to load dashboard data:', error);
-      // ❌ NO retry loop here (important)
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   };

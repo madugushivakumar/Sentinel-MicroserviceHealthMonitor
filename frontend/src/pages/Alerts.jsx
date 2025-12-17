@@ -9,16 +9,19 @@ export const Alerts = () => {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [testServiceId, setTestServiceId] = useState('');
-const loadedRef = useRef(false);
+  const loadedRef = useRef(false);
+  const requestInFlight = useRef(false);
+  
   useEffect(() => {
-     if (!selectedProject || loadedRef.current) return;
+    if (!selectedProject || loadedRef.current) return;
     loadedRef.current = true; 
-      loadData();
-    
+    loadData();
   }, [selectedProject]);
 
   const loadData = async () => {
-  
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    
     try {
       setLoading(true);
       const [alertsRes, servicesRes] = await Promise.all([
@@ -28,8 +31,13 @@ const loadedRef = useRef(false);
       setAlerts(alertsRes.data);
       setServices(servicesRes.data);
     } catch (e) {
-     if (e.response?.status === 429) return;
+      if (e.response?.status === 429) {
+        console.warn('Rate limited: skipping retry');
+        return;
+      }
+      console.error('Failed to load alerts:', e);
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   };
@@ -53,17 +61,13 @@ const loadedRef = useRef(false);
 
   // Filter to show only user-facing alerts
   const userFacingAlerts = alerts.filter(
-    a =>
-      a.channel === 'email' ||
-      a.channel === 'slack' ||
-      a.channel === 'telegram' ||
-      a.channel === 'whatsapp'
+    a => a.channel === 'email'
   );
 
   const filteredAlerts =
     filter === 'all'
       ? userFacingAlerts
-      : userFacingAlerts.filter(a => a.channel === filter);
+      : userFacingAlerts.filter(a => a.channel === filter && a.channel === 'email');
 
   if (loading) {
     return (
@@ -84,10 +88,7 @@ const loadedRef = useRef(false);
   }
 
   const channelColors = {
-    slack: 'bg-purple-600 text-white',
-    telegram: 'bg-blue-600 text-white',
-    email: 'bg-green-600 text-white',
-    whatsapp: 'bg-emerald-600 text-white'
+    email: 'bg-green-600 text-white'
   };
 
   return (
@@ -124,7 +125,7 @@ const loadedRef = useRef(false);
       </div>
 
       <div className="flex space-x-2">
-        {['all', 'slack', 'telegram', 'email', 'whatsapp'].map(type => (
+        {['all', 'email'].map(type => (
           <button
             key={type}
             onClick={() => setFilter(type)}
