@@ -52,9 +52,13 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    // Handle 429 Rate Limit Errors - NO RETRY, NO SPAM
+    // Handle 429 Rate Limit Errors - Show wait timer
     if (error.response?.status === 429) {
       console.warn('Rate limited: skipping retry');
+      // Trigger rate limit wait component
+      if (rateLimitHandler) {
+        rateLimitHandler();
+      }
       return Promise.reject(error);
     }
     

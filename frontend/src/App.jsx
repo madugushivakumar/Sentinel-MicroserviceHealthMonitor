@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, NavLink } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
 import { Landing } from './pages/Landing';
@@ -10,6 +10,18 @@ import { ServiceDetails } from './pages/ServiceDetails';
 import { Alerts } from './pages/Alerts';
 import { SLOReport } from './pages/SLOReport';
 import { AlertRules } from './pages/AlertRules';
+import { RateLimitWait } from './components/RateLimitWait';
+import { setRateLimitHandler } from './services/api';
+
+const RateLimitContext = createContext();
+
+export const useRateLimit = () => {
+  const context = useContext(RateLimitContext);
+  if (!context) {
+    throw new Error('useRateLimit must be used within RateLimitProvider');
+  }
+  return context;
+};
 
 const Icons = {
   Dashboard: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
@@ -136,24 +148,42 @@ const Layout = ({ children }) => {
   );
 };
 
+const RateLimitProvider = ({ children }) => {
+  const [showRateLimit, setShowRateLimit] = useState(false);
+
+  // Set the handler in API service
+  React.useEffect(() => {
+    setRateLimitHandler(() => setShowRateLimit(true));
+  }, []);
+
+  return (
+    <RateLimitContext.Provider value={{ setShowRateLimit }}>
+      {children}
+      {showRateLimit && <RateLimitWait onClose={() => setShowRateLimit(false)} />}
+    </RateLimitContext.Provider>
+  );
+};
+
 export default function App() {
   return (
     <ProjectProvider>
-      <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/incidents" element={<Incidents />} />
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/alert-rules" element={<AlertRules />} />
-            <Route path="/service/:id" element={<ServiceDetails />} />
-            <Route path="/service/:id/slo" element={<SLOReport />} />
-          </Routes>
-        </Layout>
-      </BrowserRouter>
+      <RateLimitProvider>
+        <BrowserRouter>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/incidents" element={<Incidents />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/alert-rules" element={<AlertRules />} />
+              <Route path="/service/:id" element={<ServiceDetails />} />
+              <Route path="/service/:id/slo" element={<SLOReport />} />
+            </Routes>
+          </Layout>
+        </BrowserRouter>
+      </RateLimitProvider>
     </ProjectProvider>
   );
 }
