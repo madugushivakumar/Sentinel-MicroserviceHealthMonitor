@@ -23,6 +23,31 @@ if (!import.meta.env.VITE_API_BASE_URL) {
 }
 
 // ==============================
+// Response Interceptor - Handle 429 Errors
+// ==============================
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  async (error) => {
+    // Handle 429 Rate Limit Errors - NO RETRY, NO SPAM
+    if (error.response?.status === 429) {
+      console.warn('Rate limited: skipping retry');
+      // Return error immediately without retrying
+      return Promise.reject(error);
+    }
+    
+    // For network errors, don't retry automatically
+    if (!error.response && error.code === 'ERR_NETWORK') {
+      console.warn('Network error: skipping retry');
+      return Promise.reject(error);
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// ==============================
 // PROJECTS API
 // ==============================
 export const getProjects = () => api.get('/projects');
