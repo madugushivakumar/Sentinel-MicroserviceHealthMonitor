@@ -9,16 +9,19 @@ export const Alerts = () => {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [testServiceId, setTestServiceId] = useState('');
-const loadedRef = useRef(false);
+  const loadedRef = useRef(false);
+  const requestInFlight = useRef(false);
+  
   useEffect(() => {
-     if (!selectedProject || loadedRef.current) return;
+    if (!selectedProject || loadedRef.current) return;
     loadedRef.current = true; 
-      loadData();
-    
+    loadData();
   }, [selectedProject]);
 
   const loadData = async () => {
-  
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    
     try {
       setLoading(true);
       const [alertsRes, servicesRes] = await Promise.all([
@@ -28,8 +31,13 @@ const loadedRef = useRef(false);
       setAlerts(alertsRes.data);
       setServices(servicesRes.data);
     } catch (e) {
-     if (e.response?.status === 429) return;
+      if (e.response?.status === 429) {
+        console.warn('Rate limited: skipping retry');
+        return;
+      }
+      console.error('Failed to load alerts:', e);
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   };

@@ -1,6 +1,17 @@
 import axios from 'axios';
 
 // ==============================
+// Request Cache & Deduplication
+// ==============================
+const requestCache = new Map();
+const pendingRequests = new Map();
+const CACHE_DURATION = 3000; // 3 seconds cache
+
+const getCacheKey = (config) => {
+  return `${config.method?.toUpperCase()}_${config.url}_${JSON.stringify(config.params || {})}`;
+};
+
+// ==============================
 // Base Axios Instance
 // ==============================
 const api = axios.create({
@@ -23,6 +34,17 @@ if (!import.meta.env.VITE_API_BASE_URL) {
 }
 
 // ==============================
+// Request Interceptor - Simple Tracking
+// ==============================
+api.interceptors.request.use(
+  (config) => {
+    // Just track the request, don't interfere with it
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ==============================
 // Response Interceptor - Handle 429 Errors
 // ==============================
 api.interceptors.response.use(
@@ -33,7 +55,6 @@ api.interceptors.response.use(
     // Handle 429 Rate Limit Errors - NO RETRY, NO SPAM
     if (error.response?.status === 429) {
       console.warn('Rate limited: skipping retry');
-      // Return error immediately without retrying
       return Promise.reject(error);
     }
     

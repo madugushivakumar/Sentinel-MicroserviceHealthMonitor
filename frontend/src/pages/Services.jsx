@@ -23,10 +23,10 @@ export const Services = () => {
     ownerEmail: ''
   });
 
- useEffect(() => {
-   if (!selectedProject) return;
-  if (loadedRef.current) return;
-  loadedRef.current = true;
+  useEffect(() => {
+    if (!selectedProject) return;
+    if (loadedRef.current) return;
+    loadedRef.current = true;
     isMountedRef.current = true;
     loadData();
 
@@ -58,9 +58,9 @@ export const Services = () => {
     };
   }, [selectedProject]);
 
-const loadData = async () => {
-   if (requestInFlight.current) return;
-  requestInFlight.current = true;
+  const loadData = async () => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
     try {
       setLoading(true);
       const res = await getServices();

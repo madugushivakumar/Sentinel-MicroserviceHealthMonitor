@@ -25,7 +25,11 @@ const requestInFlight = useRef(false);
       const res = await getProjects();
       setProjects(res.data);
     } catch (error) {
-      console.error(e);
+      if (error.response?.status === 429) {
+        console.warn('Rate limited: skipping retry');
+        return;
+      }
+      console.error('Failed to load projects:', error);
     }
   };
 
