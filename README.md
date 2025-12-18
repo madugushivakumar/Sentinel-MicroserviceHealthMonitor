@@ -75,13 +75,13 @@ npm install
 cp .env.example .env
 ```
 
-4. Create `.env` file and configure environment variables:
+4. Edit `.env` file and configure environment variables (see `backend/.env.example` for reference):
 ```env
 PORT=5000
-MONGODB_URI=mongodb+srv://isha4shiva_db_user:KFWa7AceeiwND8VA@cluster0.nypeof3.mongodb.net/sentinel?retryWrites=true&w=majority&appName=Cluster0
+MONGODB_URI=your-mongodb-connection-string-here
 JWT_SECRET=your-secret-key-change-in-production
 NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
 
 # Alert Integrations (optional)
 SLACK_WEBHOOK_URL=
@@ -94,8 +94,6 @@ EMAIL_PASS=
 WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_ACCESS_TOKEN=
 ```
-
-**Note:** Your MongoDB Atlas connection string is already configured. See `backend/ENV_SETUP.md` for details.
 
 5. Start MongoDB (if running locally):
 ```bash
@@ -122,8 +120,13 @@ npm install
 ```
 
 3. Create `.env` file (optional, defaults to localhost:5000):
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set:
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
 4. Start the development server:

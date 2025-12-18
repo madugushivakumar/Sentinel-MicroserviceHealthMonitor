@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export const Landing = () => {
   const navigate = useNavigate();
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const { login, signup, isAuthenticated } = useAuth();
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [authData, setAuthData] = useState({
+    name: '',
+    email: '',
+    password: ''
+  });
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
 
   return (
     <div className="min-h-screen bg-black text-zinc-300 font-sans selection:bg-white selection:text-black">
@@ -31,12 +41,21 @@ export const Landing = () => {
               <a href="#features" className="text-xs font-bold font-mono text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">Modules</a>
               <a href="#npm" className="text-xs font-bold font-mono text-zinc-500 hover:text-white uppercase tracking-widest transition-colors">Documentation</a>
               <div className="h-4 w-px bg-zinc-800"></div>
-              <button 
-                onClick={() => setIsLoginOpen(true)}
-                className="text-xs font-bold font-mono text-white hover:text-zinc-300 uppercase tracking-widest transition-colors"
-              >
-                Access_Terminal
-              </button>
+              {isAuthenticated ? (
+                <button 
+                  onClick={() => navigate('/dashboard')}
+                  className="text-xs font-bold font-mono text-white hover:text-zinc-300 uppercase tracking-widest transition-colors"
+                >
+                  Access_Dashboard
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setIsAuthOpen(true)}
+                  className="text-xs font-bold font-mono text-white hover:text-zinc-300 uppercase tracking-widest transition-colors"
+                >
+                  Access_Terminal
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -67,7 +86,13 @@ export const Landing = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => {
+                  if (isAuthenticated) {
+                    navigate('/dashboard');
+                  } else {
+                    setIsAuthOpen(true);
+                  }
+                }}
                 className="px-8 py-4 bg-white hover:bg-zinc-200 text-black font-mono font-bold text-sm transition-all flex items-center justify-center gap-2 group"
               >
                 INITIATE_DASHBOARD
@@ -204,38 +229,118 @@ export const Landing = () => {
         <p className="mt-2">ALL SYSTEMS OPERATIONAL</p>
       </footer>
 
-      {/* Login Modal */}
-      {isLoginOpen && (
+      {/* Auth Modal */}
+      {isAuthOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-900/50 backdrop-blur-sm">
            <div className="bg-black border border-zinc-700 w-full max-w-md p-1">
               <div className="border border-zinc-800 p-8 bg-zinc-950">
                 <div className="flex justify-between items-center mb-8">
-                   <h2 className="text-xl font-bold text-white font-mono uppercase">System Login</h2>
-                   <button onClick={() => setIsLoginOpen(false)} className="text-zinc-500 hover:text-white">
+                   <h2 className="text-xl font-bold text-white font-mono uppercase">
+                     {isSignUp ? 'System Registration' : 'System Login'}
+                   </h2>
+                   <button 
+                     onClick={() => {
+                       setIsAuthOpen(false);
+                       setAuthError('');
+                       setAuthData({ name: '', email: '', password: '' });
+                     }} 
+                     className="text-zinc-500 hover:text-white"
+                   >
                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                      </svg>
                    </button>
                 </div>
                 
+                {authError && (
+                  <div className="mb-6 p-3 bg-red-900/20 border border-red-800 text-red-400 text-sm font-mono">
+                    {authError}
+                  </div>
+                )}
+
                 <div className="space-y-6">
+                   {isSignUp && (
+                     <div>
+                       <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 font-mono">Operator Name</label>
+                       <input 
+                         type="text" 
+                         value={authData.name}
+                         onChange={(e) => setAuthData({ ...authData, name: e.target.value })}
+                         className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-white focus:border-white focus:outline-none font-mono text-sm" 
+                         placeholder="Enter your name"
+                       />
+                     </div>
+                   )}
                    <div>
                      <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 font-mono">Operator ID</label>
-                     <input type="email" className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-white focus:border-white focus:outline-none font-mono text-sm" />
+                     <input 
+                       type="email" 
+                       value={authData.email}
+                       onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
+                       className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-white focus:border-white focus:outline-none font-mono text-sm" 
+                       placeholder="operator@system.local"
+                     />
                    </div>
                    <div>
                      <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 font-mono">Access Key</label>
-                     <input type="password" className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-white focus:border-white focus:outline-none font-mono text-sm" />
+                     <input 
+                       type="password" 
+                       value={authData.password}
+                       onChange={(e) => setAuthData({ ...authData, password: e.target.value })}
+                       className="w-full bg-zinc-900 border border-zinc-800 px-4 py-3 text-white focus:border-white focus:outline-none font-mono text-sm" 
+                       placeholder="Enter access key"
+                     />
                    </div>
                    
-                   <button className="w-full bg-white hover:bg-zinc-200 text-black font-bold font-mono py-3 uppercase tracking-widest transition-all">
-                     Authenticate
+                   <button 
+                     onClick={async () => {
+                       setAuthError('');
+                       setAuthLoading(true);
+                       
+                       if (!authData.email || !authData.password || (isSignUp && !authData.name)) {
+                         setAuthError('All fields are required');
+                         setAuthLoading(false);
+                         return;
+                       }
+
+                       const result = isSignUp 
+                         ? await signup(authData.name, authData.email, authData.password)
+                         : await login(authData.email, authData.password);
+
+                       setAuthLoading(false);
+
+                       if (result.success) {
+                         setIsAuthOpen(false);
+                         setAuthData({ name: '', email: '', password: '' });
+                         navigate('/dashboard');
+                       } else {
+                         setAuthError(result.error || 'Authentication failed');
+                       }
+                     }}
+                     disabled={authLoading}
+                     className="w-full bg-white hover:bg-zinc-200 text-black font-bold font-mono py-3 uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                   >
+                     {authLoading ? 'AUTHENTICATING...' : 'AUTHENTICATE'}
                    </button>
+
+                   <div className="text-center">
+                     <button
+                       onClick={() => {
+                         setIsSignUp(!isSignUp);
+                         setAuthError('');
+                         setAuthData({ name: '', email: '', password: '' });
+                       }}
+                       className="text-xs text-zinc-500 hover:text-white font-mono uppercase tracking-widest"
+                     >
+                       {isSignUp ? 'Already have access? Sign in' : 'Need access? Register'}
+                     </button>
+                   </div>
                 </div>
               </div>
            </div>
         </div>
       )}
+
     </div>
   );
 };

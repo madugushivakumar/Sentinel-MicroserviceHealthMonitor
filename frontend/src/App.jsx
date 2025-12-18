@@ -1,6 +1,7 @@
 import React, { useState, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, NavLink } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Landing } from './pages/Landing';
 import { Dashboard } from './pages/Dashboard';
 import { Projects } from './pages/Projects';
@@ -11,6 +12,7 @@ import { Alerts } from './pages/Alerts';
 import { SLOReport } from './pages/SLOReport';
 import { AlertRules } from './pages/AlertRules';
 import { RateLimitWait } from './components/RateLimitWait';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { setRateLimitHandler } from './services/api';
 
 const RateLimitContext = createContext();
@@ -33,6 +35,8 @@ const Icons = {
 
 const Layout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Don't show sidebar on landing page
@@ -116,15 +120,38 @@ const Layout = ({ children }) => {
 
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800 bg-black relative z-10">
-          <div className="flex items-center gap-3 text-sm">
-            <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-white font-medium">
-              AS
+          {user ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-white font-medium">
+                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold truncate">{user.name || 'User'}</p>
+                  <p className="text-xs text-zinc-400 truncate">{user.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  logout();
+                  navigate('/');
+                }}
+                className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-mono uppercase tracking-widest transition-colors"
+              >
+                LOGOUT
+              </button>
             </div>
-            <div>
-              <p className="text-white font-bold">Admin User</p>
-              <p className="text-xs text-white">DevOps Team</p>
+          ) : (
+            <div className="flex items-center gap-3 text-sm">
+              <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-white font-medium">
+                ?
+              </div>
+              <div>
+                <p className="text-white font-bold">Not Authenticated</p>
+                <p className="text-xs text-zinc-400">Please sign in</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
 
@@ -166,24 +193,82 @@ const RateLimitProvider = ({ children }) => {
 
 export default function App() {
   return (
-    <ProjectProvider>
-      <RateLimitProvider>
-        <BrowserRouter>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/incidents" element={<Incidents />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/alert-rules" element={<AlertRules />} />
-              <Route path="/service/:id" element={<ServiceDetails />} />
-              <Route path="/service/:id/slo" element={<SLOReport />} />
-            </Routes>
-          </Layout>
-        </BrowserRouter>
-      </RateLimitProvider>
-    </ProjectProvider>
+    <AuthProvider>
+      <ProjectProvider>
+        <RateLimitProvider>
+          <BrowserRouter>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/projects" 
+                  element={
+                    <ProtectedRoute>
+                      <Projects />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/services" 
+                  element={
+                    <ProtectedRoute>
+                      <Services />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/incidents" 
+                  element={
+                    <ProtectedRoute>
+                      <Incidents />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/alerts" 
+                  element={
+                    <ProtectedRoute>
+                      <Alerts />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/alert-rules" 
+                  element={
+                    <ProtectedRoute>
+                      <AlertRules />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/service/:id" 
+                  element={
+                    <ProtectedRoute>
+                      <ServiceDetails />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/service/:id/slo" 
+                  element={
+                    <ProtectedRoute>
+                      <SLOReport />
+                    </ProtectedRoute>
+                  } 
+                />
+              </Routes>
+            </Layout>
+          </BrowserRouter>
+        </RateLimitProvider>
+      </ProjectProvider>
+    </AuthProvider>
   );
 }

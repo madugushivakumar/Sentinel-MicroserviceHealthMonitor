@@ -35,11 +35,15 @@ if (!import.meta.env.VITE_API_BASE_URL) {
 }
 
 // ==============================
-// Request Interceptor - Simple Tracking
+// Request Interceptor - Add Auth Token
 // ==============================
 api.interceptors.request.use(
   (config) => {
-    // Just track the request, don't interfere with it
+    // Add auth token if available
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -72,6 +76,13 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// ==============================
+// AUTH API
+// ==============================
+export const signup = (data) => api.post('/auth/signup', data);
+export const login = (data) => api.post('/auth/login', data);
+export const getCurrentUser = () => api.get('/auth/me');
 
 // ==============================
 // PROJECTS API
