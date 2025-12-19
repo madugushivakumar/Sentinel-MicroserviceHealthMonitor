@@ -1,4 +1,3 @@
-
 # Sentinel — Microservice Health Monitor
 
 **Sentinel** is a powerful **MERN stack** microservice health monitoring platform designed to help engineering teams **ensure reliability, uptime, performance, and rapid alerting** across distributed systems.
