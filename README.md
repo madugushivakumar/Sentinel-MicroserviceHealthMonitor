@@ -1,6 +1,3 @@
-Here’s a **professional README.md** you can directly use for **Sentinel-MicroserviceHealthMonitor**, tailored to *market it even while it’s under development*. It’s descriptive, recruiter-friendly, and highlights vision + features.
-
----
 
 # Sentinel — Microservice Health Monitor
 
